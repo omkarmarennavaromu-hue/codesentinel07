@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>CodeSentinel AI — Reviewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#020408;--s:#060d14;--panel:#0a1520;
+  --b:#0ff3;--a:#00ffe7;--a2:#ff003c;
+  --t:#c8e6f5;--m:#3d6a88;
+  --glow:0 0 20px #00ffe740,0 0 60px #00ffe712;
+  --green:#28ca41;--yellow:#e5c07b;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Rajdhani',sans-serif;background:var(--bg);color:var(--t);cursor:none;display:flex;flex-direction:column;}
+
+/* CURSOR */
+#cur{position:fixed;width:10px;height:10px;background:var(--a);border-radius:50%;pointer-events:none;z-index:9999;box-shadow:var(--glow);transform:translate(-50%,-50%);}
+#cur2{position:fixed;width:26px;height:26px;border:1px solid var(--a);border-radius:50%;pointer-events:none;z-index:9998;opacity:.35;transform:translate(-50%,-50%);transition:left .1s,top .1s;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,231,.01) 2px,rgba(0,255,231,.01) 4px);pointer-events:none;z-index:700;}
+
+/* HEADER */
+header{border-bottom:1px solid var(--b);background:var(--s);padding:12px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;height:52px;}
+.logo{font-family:'Orbitron',monospace;font-size:.9rem;font-weight:900;color:var(--a);text-shadow:var(--glow);letter-spacing:3px;}
+.logo span{color:var(--a2);}
+.hright{display:flex;align-items:center;gap:22px;}
+.status{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:2px;color:var(--m);}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 7px var(--green);display:inline-block;margin-right:6px;animation:pd 2s infinite;}
+@keyframes pd{0%,100%{opacity:1}50%{opacity:.3}}
+.back{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:2px;color:var(--m);text-decoration:none;border:1px solid var(--b);padding:6px 13px;transition:all .3s;}
+.back:hover{color:var(--a);border-color:var(--a);}
+
+/* LAYOUT */
+.app{display:grid;grid-template-columns:1fr 1fr;height:calc(100vh - 52px);overflow:hidden;}
+
+/* LEFT */
+.left{border-right:1px solid var(--b);display:flex;flex-direction:column;overflow:hidden;}
+.ph{padding:13px 22px;border-bottom:1px solid var(--b);background:var(--panel);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.pt{font-family:'Share Tech Mono',monospace;font-size:.68rem;letter-spacing:3px;color:var(--a);}
+.lc{font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:2px;color:var(--m);}
+
+/* DETECTED BADGE */
+.det-bar{padding:10px 22px;border-bottom:1px solid var(--b);background:var(--s);display:flex;align-items:center;gap:10px;flex-shrink:0;min-height:42px;}
+.det-label{font-family:'Share Tech Mono',monospace;font-size:.62rem;letter-spacing:2px;color:var(--m);}
+.det-pill{font-family:'Share Tech Mono',monospace;font-size:.68rem;letter-spacing:2px;padding:4px 14px;background:var(--a);color:#000;display:none;}
+.det-hint{font-family:'Share Tech Mono',monospace;font-size:.62rem;letter-spacing:1px;color:#1a3a4a;font-style:italic;}
+
+/* EDITOR */
+.ew{flex:1;position:relative;overflow:hidden;}
+textarea#code{width:100%;height:100%;background:var(--bg);color:#9dcde0;font-family:'Share Tech Mono',monospace;font-size:.85rem;line-height:1.75;border:none;outline:none;resize:none;padding:22px 22px 22px 60px;caret-color:var(--a);}
+textarea#code::placeholder{color:#12283a;}
+.ln{position:absolute;left:0;top:0;bottom:0;width:52px;background:var(--s);border-right:1px solid var(--b);padding:22px 10px 22px 0;font-family:'Share Tech Mono',monospace;font-size:.85rem;line-height:1.75;color:var(--m);text-align:right;pointer-events:none;overflow:hidden;}
+
+/* CONTROLS */
+.ctrl{padding:14px 18px;border-top:1px solid var(--b);background:var(--panel);display:flex;gap:10px;align-items:center;flex-shrink:0;}
+#revBtn{font-family:'Orbitron',monospace;font-size:.75rem;font-weight:700;letter-spacing:3px;padding:13px 30px;background:var(--a);color:#000;border:none;cursor:none;transition:all .3s;position:relative;overflow:hidden;flex-shrink:0;}
+#revBtn::before{content:'';position:absolute;inset:0;background:#fff;transform:translateX(-105%) skewX(-15deg);transition:transform .35s;}
+#revBtn:hover::before{transform:translateX(105%) skewX(-15deg);}
+#revBtn span{position:relative;z-index:1;}
+#revBtn:hover{box-shadow:var(--glow);}
+#revBtn:disabled{opacity:.45;}
+.ubtn{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:2px;padding:13px 18px;background:transparent;color:var(--m);border:1px solid var(--b);cursor:none;transition:all .3s;}
+.ubtn:hover{color:var(--a);border-color:var(--a);}
+.clrbtn{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:2px;padding:13px 16px;background:transparent;color:var(--m);border:1px solid var(--b);cursor:none;transition:all .3s;margin-left:auto;}
+.clrbtn:hover{color:var(--a2);border-color:var(--a2);}
+#fi{display:none;}
+.kbhint{font-family:'Share Tech Mono',monospace;font-size:.58rem;letter-spacing:1px;color:#1a3a4a;}
+
+/* RIGHT */
+.right{display:flex;flex-direction:column;overflow:hidden;}
+.tabs{border-bottom:1px solid var(--b);background:var(--panel);display:flex;flex-shrink:0;}
+.tb{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:2px;padding:14px 16px;background:transparent;color:var(--m);border:none;border-bottom:2px solid transparent;cursor:none;transition:all .25s;}
+.tb:hover{color:var(--a);}
+.tb.on{color:var(--a);border-bottom-color:var(--a);}
+.out{flex:1;overflow-y:auto;padding:22px;}
+.out::-webkit-scrollbar{width:3px;}
+.out::-webkit-scrollbar-thumb{background:var(--a);}
+
+/* IDLE */
+.idle{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;}
+.idle-icon{font-size:3rem;opacity:.15;}
+.idle-t{font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:3px;color:var(--m);opacity:.5;}
+.idle-s{font-family:'Share Tech Mono',monospace;font-size:.58rem;letter-spacing:2px;color:var(--m);opacity:.25;}
+
+/* LOADING */
+.loading{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;}
+.ring{width:52px;height:52px;border:2px solid var(--b);border-top-color:var(--a);border-radius:50%;animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lt{font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:3px;color:var(--a);}
+.ls{font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:2px;color:var(--m);}
+
+/* RESULTS */
+.score-c{background:var(--panel);border:1px solid var(--a);padding:22px 26px;margin-bottom:16px;display:flex;align-items:center;gap:22px;box-shadow:var(--glow);}
+.snum{font-family:'Orbitron',monospace;font-size:2.8rem;font-weight:900;color:var(--a);text-shadow:var(--glow);flex-shrink:0;line-height:1;}
+.sbw{flex:1;}
+.slab{font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:3px;color:var(--m);}
+.sbar{height:3px;background:var(--b);margin-top:8px;}
+.sfill{height:100%;transition:width 1.1s ease;}
+.sreason{font-size:.88rem;color:var(--m);margin-top:8px;line-height:1.5;}
+
+.rb{margin-bottom:14px;border:1px solid var(--b);overflow:hidden;}
+.rbh{padding:11px 18px;background:var(--panel);border-bottom:1px solid var(--b);display:flex;align-items:center;gap:9px;font-family:'Share Tech Mono',monospace;font-size:.67rem;letter-spacing:2px;color:var(--a);}
+.rbh .ct{background:var(--a);color:#000;font-size:.55rem;padding:2px 8px;letter-spacing:1px;}
+.rbb{padding:16px 18px;background:var(--s);font-size:.88rem;line-height:1.7;}
+.rbb pre{font-family:'Share Tech Mono',monospace;font-size:.78rem;background:var(--bg);border:1px solid var(--b);padding:14px;overflow-x:auto;line-height:1.65;color:#8fc8e0;margin-top:10px;white-space:pre-wrap;word-break:break-all;}
+.bug{color:var(--a2);margin-bottom:5px;}
+.bug.w{color:var(--yellow);}
+.bug.i{color:var(--m);}
+.sec-i{color:var(--yellow);margin-bottom:10px;}
+.sec-i .fix{color:var(--m);font-size:.82rem;}
+.imp{color:#98c379;margin-bottom:4px;padding-left:14px;position:relative;}
+.imp::before{content:'›';position:absolute;left:0;color:var(--a);}
+.cx{display:flex;gap:16px;padding:9px 0;border-bottom:1px solid var(--b);}
+.cx:last-child{border-bottom:none;}
+.cxl{color:var(--m);width:140px;flex-shrink:0;font-family:'Share Tech Mono',monospace;font-size:.75rem;}
+.cxv{color:var(--a);font-family:'Orbitron',monospace;font-size:.8rem;}
+.ok{color:var(--green);}
+.err-b{padding:22px;background:#ff003c0e;border:1px solid var(--a2);color:var(--a2);font-family:'Share Tech Mono',monospace;font-size:.78rem;line-height:1.7;}
+.copy{font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:2px;padding:5px 13px;background:transparent;color:var(--m);border:1px solid var(--b);cursor:none;transition:all .3s;float:right;margin-bottom:6px;}
+.copy:hover{color:var(--a);border-color:var(--a);}
+
+@media(max-width:800px){
+  .app{grid-template-columns:1fr;grid-template-rows:50% 50%;}
+  .left,.right{height:50vh;}
+  html,body{overflow:auto;}
+}
+</style>
+</head>
+<body>
+<div id="cur"></div><div id="cur2"></div>
+
+<header>
+  <div class="logo">CODE<span>SENTINEL</span> AI</div>
+  <div class="hright">
+    <span class="status"><span class="sdot"></span>QWEN AI ONLINE</span>
+    <a href="index.html" class="back">← HOME</a>
+  </div>
+</header>
+
+<div class="app">
+  <!-- LEFT: INPUT -->
+  <div class="left">
+    <div class="ph">
+      <span class="pt">// CODE INPUT //</span>
+      <span class="lc" id="lc">0 LINES</span>
+    </div>
+
+    <div class="det-bar">
+      <span class="det-label">LANG:</span>
+      <span class="det-pill" id="detPill"></span>
+      <span class="det-hint" id="detHint">AI will auto-detect your language</span>
+    </div>
+
+    <div class="ew">
+      <div class="ln" id="ln">1</div>
+      <textarea id="code" spellcheck="false" placeholder="// Paste any code here...
+// AI will automatically detect: C, C++, Python, Java, JavaScript & more
+//
+// You will get:
+//   ∙ Bugs & errors found
+//   ∙ Security vulnerabilities
+//   ∙ Time & space complexity
+//   ∙ Quality score /10
+//   ∙ Fixed & optimized code
+//
+// No dropdowns. No config. Just paste and analyze.
+// Ctrl+Enter to run →"></textarea>
+    </div>
+
+    <div class="ctrl">
+      <button id="revBtn" onclick="review()"><span>⚡ ANALYZE</span></button>
+      <button class="ubtn" onclick="document.getElementById('fi').click()">📁 FILE</button>
+      <input type="file" id="fi" accept=".py,.js,.c,.cpp,.java,.txt,.ts,.go,.rs,.rb,.php" onchange="loadFile(event)">
+      <span class="kbhint">Ctrl+Enter</span>
+      <button class="clrbtn" onclick="clearAll()">✕ CLEAR</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: OUTPUT -->
+  <div class="right">
+    <div class="tabs">
+      <button class="tb on" onclick="tab(this,'all')">ALL</button>
+      <button class="tb" onclick="tab(this,'bugs')">BUGS</button>
+      <button class="tb" onclick="tab(this,'security')">SECURITY</button>
+      <button class="tb" onclick="tab(this,'fixed')">FIXED CODE</button>
+    </div>
+    <div class="out" id="out">
+      <div class="idle">
+        <div class="idle-icon">⬡</div>
+        <div class="idle-t">AWAITING CODE</div>
+        <div class="idle-s">PASTE CODE AND CLICK ANALYZE</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CURSOR ──────────────────────────────────────
+const cur=document.getElementById('cur'),cur2=document.getElementById('cur2');
+let mx=0,my=0,tx=0,ty=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px';});
+(function loop(){tx+=(mx-tx)*.11;ty+=(my-ty)*.11;cur2.style.left=tx+'px';cur2.style.top=ty+'px';requestAnimationFrame(loop);})();
+
+// ── EDITOR ──────────────────────────────────────
+const codeEl=document.getElementById('code');
+const lnEl=document.getElementById('ln');
+const lcEl=document.getElementById('lc');
+
+function updateLn(){
+  const lines=codeEl.value.split('\n');
+  const n=lines.length;
+  lcEl.textContent=n+' LINES';
+  lnEl.innerHTML=Array.from({length:n},(_,i)=>i+1).join('<br>');
+  lnEl.scrollTop=codeEl.scrollTop;
+  // simple lang hint
+  detectLangHint(codeEl.value);
+}
+codeEl.addEventListener('input',updateLn);
+codeEl.addEventListener('scroll',()=>{lnEl.scrollTop=codeEl.scrollTop;});
+
+function detectLangHint(code){
+  const pill=document.getElementById('detPill');
+  const hint=document.getElementById('detHint');
+  if(!code.trim()){pill.style.display='none';hint.style.display='';return;}
+  let lang='';
+  if(/#include\s*</.test(code)&&/cout|cin|std::/.test(code)) lang='C++';
+  else if(/#include\s*</.test(code)) lang='C';
+  else if(/def |import |print\(|elif/.test(code)) lang='Python';
+  else if(/public\s+class|System\.out\.println/.test(code)) lang='Java';
+  else if(/console\.log|const |let |=>/.test(code)) lang='JavaScript';
+  if(lang){pill.textContent=lang;pill.style.display='';hint.style.display='none';}
+  else{pill.style.display='none';hint.style.display='';}
+}
+
+// ── FILE LOAD ───────────────────────────────────
+function loadFile(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{codeEl.value=ev.target.result;updateLn();};
+  r.readAsText(f);
+}
+
+// ── CLEAR ───────────────────────────────────────
+function clearAll(){
+  codeEl.value='';updateLn();
+  document.getElementById('out').innerHTML=`<div class="idle"><div class="idle-icon">⬡</div><div class="idle-t">AWAITING CODE</div><div class="idle-s">PASTE CODE AND CLICK ANALYZE</div></div>`;
+  document.getElementById('detPill').style.display='none';
+  document.getElementById('detHint').style.display='';
+  lastData=null;
+}
+
+// ── TABS ─────────────────────────────────────────
+let activeTab='all',lastData=null;
+function tab(el,t){
+  document.querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');activeTab=t;
+  if(lastData)render(lastData,t);
+}
+
+// ── REVIEW ──────────────────────────────────────
+async function review(){
+  const code=codeEl.value.trim();
+  if(!code){flash('// No code detected. Paste some code first.');return;}
+  if(code.length>18000){flash('// Code too large. Max ~18,000 characters.');return;}
+
+  const btn=document.getElementById('revBtn');
+  btn.disabled=true;btn.querySelector('span').textContent='⟳ ANALYZING...';
+
+  document.getElementById('out').innerHTML=`<div class="loading"><div class="ring"></div><div class="lt">ANALYZING CODE...</div><div class="ls">AUTO-DETECTING LANGUAGE + RUNNING 5 LAYERS</div></div>`;
+
+  const prompt=buildPrompt(code);
+
+  try{
+    const res=await fetch('/api/review',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code,prompt})
+    });
+    if(!res.ok){
+      const e=await res.json().catch(()=>({}));
+      throw new Error(e.error||'HTTP '+res.status);
+    }
+    const d=await res.json();
+    const parsed=parse(d.result);
+    lastData=parsed;
+    render(parsed,activeTab);
+    // Update detected lang pill if AI returned it
+    if(parsed.language){
+      const pill=document.getElementById('detPill');
+      pill.textContent=parsed.language;
+      pill.style.display='';
+      document.getElementById('detHint').style.display='none';
+    }
+  }catch(err){
+    document.getElementById('out').innerHTML=`<div class="err-b">⚠ ANALYSIS FAILED<br><br>${esc(err.message)}<br><br><span style="opacity:.5;font-size:.7rem">Check your OPENROUTER_API_KEY in Vercel environment variables.</span></div>`;
+  }finally{
+    btn.disabled=false;btn.querySelector('span').textContent='⚡ ANALYZE';
+  }
+}
+
+// ── PROMPT ──────────────────────────────────────
+function buildPrompt(code){
+  return `You are CodeSentinel AI, an elite code analysis engine. Analyze the code below.
+
+IMPORTANT: Return ONLY a valid JSON object. No markdown. No text outside JSON.
+
+Code:
+\`\`\`
+${code}
+\`\`\`
+
+Return exactly this JSON structure:
+{
+  "language": "<detected programming language name>",
+  "score": <number 0.0-10.0 with one decimal>,
+  "score_reason": "<one sentence explaining the score>",
+  "bugs": [
+    {"line": "<line number or range>", "issue": "<clear description>", "severity": "critical|warning|info"}
+  ],
+  "security": [
+    {"issue": "<vulnerability description>", "severity": "critical|warning|info", "fix": "<how to fix it>"}
+  ],
+  "complexity": {
+    "time": "<Big-O e.g. O(n^2)>",
+    "space": "<Big-O e.g. O(n)>",
+    "note": "<one line explanation>"
+  },
+  "improvements": ["<suggestion 1>", "<suggestion 2>"],
+  "fixed_code": "<complete fixed and optimized version of the code, with newlines as \\n>",
+  "summary": "<2-3 sentence overall assessment>"
+}
+
+Rules:
+- bugs and security must be empty arrays [] if nothing found
+- fixed_code must be a complete, working version of the code
+- Be precise and technical`;
+}
+
+// ── PARSE ───────────────────────────────────────
+function parse(raw){
+  let s=raw.trim().replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```\s*$/i,'');
+  const a=s.indexOf('{'),b=s.lastIndexOf('}');
+  if(a!==-1&&b!==-1)s=s.slice(a,b+1);
+  try{return JSON.parse(s);}
+  catch{return{parseError:true,raw};}
+}
+
+// ── RENDER ──────────────────────────────────────
+function render(d,tab){
+  if(d.parseError){
+    document.getElementById('out').innerHTML=`<div class="rb"><div class="rbh">⬡ RAW OUTPUT</div><div class="rbb"><pre>${esc(d.raw)}</pre></div></div>`;
+    return;
+  }
+  let h='';
+  if(tab==='all'){
+    h+=scoreHTML(d)+summaryHTML(d)+bugsHTML(d)+secHTML(d)+cxHTML(d)+impHTML(d)+fixHTML(d);
+  }else if(tab==='bugs'){
+    h+=scoreHTML(d)+bugsHTML(d)+impHTML(d);
+  }else if(tab==='security'){
+    h+=secHTML(d);
+  }else if(tab==='fixed'){
+    h+=fixHTML(d);
+  }
+  document.getElementById('out').innerHTML=h;
+  const fill=document.querySelector('.sfill');
+  if(fill)setTimeout(()=>{fill.style.width=(d.score/10*100)+'%';},80);
+}
+
+function scoreHTML(d){
+  const sc=d.score??'?';
+  const col=sc>=8?'var(--green)':sc>=5?'var(--yellow)':'var(--a2)';
+  return`<div class="score-c" style="border-color:${col};box-shadow:0 0 22px ${col}38">
+    <div class="snum" style="color:${col};text-shadow:0 0 20px ${col}70">${sc}</div>
+    <div class="sbw">
+      <div class="slab">QUALITY SCORE / 10${d.language?` &nbsp;·&nbsp; <span style="color:var(--a)">${esc(d.language)}</span>`:''}
+      </div>
+      <div class="sbar"><div class="sfill" style="width:0%;background:${col}"></div></div>
+      <div class="sreason">${esc(d.score_reason||'')}</div>
+    </div>
+  </div>`;
+}
+
+function summaryHTML(d){
+  if(!d.summary)return'';
+  return`<div class="rb"><div class="rbh">⬡ SUMMARY</div><div class="rbb">${esc(d.summary)}</div></div>`;
+}
+
+function bugsHTML(d){
+  const bugs=d.bugs||[];
+  const col=bugs.length>0?'var(--a2)':'var(--green)';
+  return`<div class="rb">
+    <div class="rbh">🐛 BUGS <span class="ct" style="background:${col}">${bugs.length} FOUND</span></div>
+    <div class="rbb">
+      ${bugs.length===0?`<span class="ok">✓ No bugs detected.</span>`:
+        bugs.map(b=>`<div class="bug${b.severity==='warning'?' w':b.severity==='info'?' i':''}">
+          <strong>[${esc((b.severity||'info').toUpperCase())}]</strong> Line ${esc(String(b.line||'?'))}: ${esc(b.issue||'')}
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function secHTML(d){
+  const s=d.security||[];
+  const col=s.length>0?'var(--yellow)':'var(--green)';
+  return`<div class="rb">
+    <div class="rbh">🔐 SECURITY <span class="ct" style="background:${col};color:#000">${s.length} FOUND</span></div>
+    <div class="rbb">
+      ${s.length===0?`<span class="ok">✓ No security issues found.</span>`:
+        s.map(x=>`<div class="sec-i">
+          <strong style="color:${x.severity==='critical'?'var(--a2)':'var(--yellow)'}">[${esc((x.severity||'warning').toUpperCase())}]</strong>
+          ${esc(x.issue||'')}<br>
+          <span class="fix">→ Fix: ${esc(x.fix||'')}</span>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function cxHTML(d){
+  const c=d.complexity||{};
+  return`<div class="rb">
+    <div class="rbh">⚡ COMPLEXITY</div>
+    <div class="rbb">
+      <div class="cx"><span class="cxl">TIME</span><span class="cxv">${esc(c.time||'N/A')}</span></div>
+      <div class="cx"><span class="cxl">SPACE</span><span class="cxv">${esc(c.space||'N/A')}</span></div>
+      ${c.note?`<div style="color:var(--m);margin-top:10px;font-size:.88rem">${esc(c.note)}</div>`:''}
+    </div>
+  </div>`;
+}
+
+function impHTML(d){
+  const imp=d.improvements||[];
+  if(!imp.length)return'';
+  return`<div class="rb">
+    <div class="rbh">🚀 IMPROVEMENTS</div>
+    <div class="rbb">${imp.map(i=>`<div class="imp">${esc(i)}</div>`).join('')}</div>
+  </div>`;
+}
+
+function fixHTML(d){
+  const code=d.fixed_code||'';
+  const id='fx'+Date.now();
+  return`<div class="rb">
+    <div class="rbh">✨ FIXED CODE</div>
+    <div class="rbb">
+      <button class="copy" onclick="cp('${id}')">⎘ COPY</button>
+      <pre id="${id}">${esc(code.replace(/\\n/g,'\n'))}</pre>
+    </div>
+  </div>`;
+}
+
+function cp(id){
+  const el=document.getElementById(id);if(!el)return;
+  navigator.clipboard.writeText(el.textContent).then(()=>{
+    const b=el.previousElementSibling;b.textContent='✓ COPIED';
+    setTimeout(()=>b.textContent='⎘ COPY',2000);
+  });
+}
+function flash(m){document.getElementById('out').innerHTML=`<div class="err-b">${esc(m)}</div>`;}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')review();});
+updateLn();
+</script>
+</body>
+</html>
